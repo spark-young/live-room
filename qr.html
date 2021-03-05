@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script type="text/javascript" src="js/common.js"></script>
+    <script type="text/javascript" src="js/qrcode.min.js"></script>
+    <style>
+        div {
+            text-align: center;
+            position: absolute;
+            left: 45%;
+            top: 45%;
+            transform: translate(-50%, -50%);
+        }
+    </style>
+</head>
+<body>
+<div id="qrcode" style="text-align: center;width: 80px;height: 80px;"></div>
+<script type="text/javascript">
+new QRCode(document.getElementById("qrcode"), "https://spark-young.top/live/student.html?_ijt="+CommonObj.getUrlSearch('_ijt'));
+</script>
+</body>
+</html>

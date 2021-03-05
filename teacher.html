@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>WebRtc 远程音视频对讲直播系统</title>
+    <link rel="stylesheet" type="text/css" href="themes/default/easyui.css">
+    <link rel="stylesheet" type="text/css" href="themes/icon.css">
+    <link rel="stylesheet" type="text/css" href="demo/demo.css">
+    <script type="text/javascript" src="earysui/jquery.min.js"></script>
+    <script type="text/javascript" src="earysui/jquery.easyui.min.js"></script>
+    <script type="text/javascript" src="js/adapter-latest.js"></script>
+    <script type="text/javascript" src="js/common.js"></script>
+    <script type="text/javascript" src="js/qrcode.min.js"></script>
+</head>
+<body class="easyui-layout">
+<div data-options="region:'north',border:false" style="height:60px;background:#B3DFDA;padding:10px;font-size: 24px;">WebRTC 实时对讲远程系统</div>
+<div data-options="region:'west',split:true,title:'本地资源'" style="width:250px;">
+    <div id="p" class="easyui-panel" title="本地摄像头" style="width:100%;height:220px;padding:1px;" >
+        <video id="vi" autoplay="autoplay"
+               loop="loop"
+               muted="muted"
+               controls="controls"
+               controlsList="nodownload" style="width: 100%;height: 100%"></video>
+    </div>
+    <div id="p1" class="easyui-panel" title="屏幕共享" style="width:100%;height:220px;padding:1px;">
+        <video id="screen_div" autoplay="autoplay"
+               loop="loop"
+               muted="muted"
+               controls="controls"
+               controlsList="nodownload" style="width: 100%;height: 100%"></video>
+    </div>
+    <div id="p2" class="easyui-panel" title="对方媒体" style="width:100%;height:260px;padding:1px;">
+        <video id="remoteAudio" autoplay="autoplay"
+               muted="muted"
+               controls="controls"
+               style="width: 100%;height: 240px;"></video>
+    </div>
+
+</div>
+<div data-options="region:'east',split:true,collapsed:false,title:'远程消息'" style="width:350px;padding:1px;">
+    <div class="easyui-panel"  style="width:100%">
+        <div  id="message" style="margin-top: 0px; font-size:10pt; border: 0px solid #cad9ea; padding: 4px; height: 400px; overflow: auto">
+            <p>加载中...</p>
+        </div>
+    </div>
+    <div data-options="region:'south',border:false" style="height:120px;padding:1px;text-align: center;">
+        <input class="easyui-textbox" id="text" name="message" data-options="multiline:true" style="height:80px;width: 100%"></input>
+        <div style="text-align: left;margin-left: 1px;">
+            <input style="height: 41px; width: 100px;" type="button" align="left" onclick="WebSocketSend()"  name="name" value="发送">
+        </div>
+    </div>
+
+
+
+</div>
+<div data-options="region:'south',border:false" style="height:50px;background:#A9FACD;padding:10px;text-align: center;">m.chenxingquan.com提供</div>
+<div data-options="region:'center',title:'控制面板'" style="padding: 30%">
+
+
+    <div style="text-align: center;">
+        <label id="currentSources" style="font-size: 20px;color: red"></label>
+        <br>
+        <label id="remoteAnswser" style="font-size: 20px;color: red"></label>
+    </div>
+
+    <div style="text-align: center;">
+        <button id="openCamera" onclick="getUserMedia_Camera();">开摄像头</button>
+        <button id="shareScreen" onclick="getUserMedia();">分享桌面</button>
+        <button onclick="openCamea()">开始呼叫</button>
+        <button  onclick="startLive();">换直播源</button>
+
+    </div>
+    <div style="text-align: center;">
+        <button onclick="fullScreen()">对方全屏</button>
+        <button  onclick="hangup();">结束挂断</button>
+        <button onclick="createQRCode()">二维码哦</button>
+        <button  onclick="reloadRemote();">远程刷新</button>
+    </div>
+    <div style="text-align: center;">
+
+
+
+    </div>
+</div>
+
+<script>
+
+    let lockReconnect = false;//避免重复连接
+    let webSocket = null;
+    let val = "";
+    let _ijt = CommonObj.getUrlSearch('_ijt');
+    let localMediaStream=null;
+    let localCameraStream=null;
+    let  acctiveStream=10;
+    let  offerer;
+    let wsUrl="wss://spark-young.top/e3/";
+    let localVideoObj = document.getElementById('screen_div');
+    if('WebSocket' in window){
+        createWebSocket();
+    }else{
+        /*浏览器不支持 WebSocket*/
+        alert("您的浏览器不支持 WebSocket!");
+    }
+    function createWebSocket() {
+        try {
+            if (typeof (WebSocket) == "undefined") {
+                alert("您的浏览器不支持WebSocket");
+            }else{
+                webSocket = new WebSocket(wsUrl);
+                init();
+            }
+        } catch(e) {
+            console.log('catch');
+            reconnect(wsUrl); //调用心跳
+        }
+    }
+    function reconnect(url) {
+        if(lockReconnect) {
+            return true;
+        };
+        lockReconnect = true;
+        //没连接上会一直重连，设置延迟避免请求过多
+        setTimeout(function () {
+            createWebSocket(url);
+            lockReconnect = false;
+        }, 5000);
+    }
+    //心跳检测
+    const heartCheck = {
+        timeout: 10000, //每隔三秒发送心跳
+        num: 3,  //3次心跳均未响应重连
+        timeoutObj: null,
+        serverTimeoutObj: null,
+        start: function(){
+            const _this = this;
+            let _num = this.num;
+            this.timeoutObj && clearTimeout(this.timeoutObj);
+            this.serverTimeoutObj && clearTimeout(this.serverTimeoutObj);
+            this.timeoutObj = setTimeout(function(){
+                //这里发送一个心跳，后端收到后，返回一个心跳消息，
+                //onmessage拿到返回的心跳就说明连接正常
+                const data = {type: 999, message: "C7F6AE56ED1B4E18",form:"system"};
+                webSocket.send(JSON.stringify(data)); // 心跳包
+                _num--;
+                //计算答复的超时次数
+                if(_num === 0) {
+                    webSocket.colse();
+                }
+            }, this.timeout)
+        }
+    };
+
+    function init() {
+        /*连接建立时触发*/
+        webSocket.onopen = function () {
+            const divscll = document.getElementById('message');
+            divscll.scrollTop = divscll.scrollHeight;
+            heartCheck.start();  //调用心跳
+        };
+        /*客户端接收服务端数据时触发*/
+        /*连接关闭时触发*/
+        webSocket.onclose = function () {
+            const divscll = document.getElementById('message');
+            divscll.scrollTop = divscll.scrollHeight;
+
+            reconnect(wsUrl);  //关闭连接重新连接
+        };
+        //连接发生错误的回调方法
+        webSocket.onerror = function() {
+            const divscll = document.getElementById('message');
+            divscll.scrollTop = divscll.scrollHeight;
+        };
+        window.onbeforeunload = function() {
+            webSocket.close();
+        }
+    }
+
+    function WebSocketSend() {
+        const messageStr = $('#text').val();
+        if (messageStr.length != 0) {
+            const data = {type: 999, message: "<strong>小全：</strong><span style='color: #3f51b5'>"+messageStr+"</span>",form:"system"};
+            webSocket.send(JSON.stringify(data));
+
+            $("#text").textbox('setValue', '');
+            //滚动条一直处于最下变
+            const divscll = document.getElementById('message');
+            divscll.scrollTop = divscll.scrollHeight;
+        } else {
+            alert("不能发送空消息哦！");
+        }
+    }
+    function setMessageInnerHTML(innerHTML) {
+        const temp = '<br/>' + innerHTML + '<br/>';
+        console.log(innerHTML);
+        val = val + temp;
+        $("#message").html(val);
+    }
+    //测试是否支持webrtc
+    function  isSupport(){
+        try {
+            let testRTCPeerConnection = window.RTCPeerConnection || window.webkitRTCPeerConnection || window.mozRTCPeerConnection || window.RTCIceGatherer;
+            let SessionDescription = window.RTCSessionDescription || window.mozRTCSessionDescription || window.webkitRTCSessionDescription;
+            if (testRTCPeerConnection&SessionDescription) {
+                return true;
+            } else {
+                throw "当前浏览器不支持该功能";
+                return;
+            }
+        } catch (error) {
+            console.error("当前浏览器不支持该功能")
+            return false;
+        }
+    }
+
+    function createQRCode(){
+        window.open("qr.html?_ijt="+_ijt);
+    }
+
+    function openCamea(){
+        if(acctiveStream!=10){
+            const data = {type:5, roomId: _ijt,form:"teacher",description:"openWebCamera"};
+            console.log(data);
+            webSocket.send(JSON.stringify(data));
+        }else{
+
+            alert("本地资源未就绪");
+
+        }
+
+    }
+    function openRemoteVoice(){
+
+        const data = {type:2, roomId: _ijt,form:"teacher"};
+        webSocket.send(JSON.stringify(data));
+        document.getElementById("remoteAudio").muted=false;
+
+    }
+
+    function  fullScreen(){
+        const data = {type:4, roomId: _ijt,form:"teacher"};
+        webSocket.send(JSON.stringify(data));
+
+    }
+    //获取屏幕分享流和本地音频流
+    async function getUserMedia() {
+        if (isSupport) {
+            //获取声音信息
+            const audioTrack = await navigator.mediaDevices.getUserMedia({audio:  {
+                    echoCancellation : true,
+                    noiseSuppression : true,
+                    autoGainControl : true
+                }});
+            //获取屏幕信息
+            navigator.mediaDevices.getDisplayMedia({
+                audio:{
+                    echoCancellation : true,
+                    noiseSuppression : true,
+                    autoGainControl : true
+                },
+                video: true
+            }).then(function (streamS){
+                streamS.addTrack(audioTrack.getAudioTracks()[0]);
+                localVideoObj.srcObject = streamS;
+                localMediaStream=streamS;
+            }).catch(function (error) {
+                console.log("error"+error.message);
+            });
+            acctiveStream=0;
+            //把媒体流，发送给peer对象
+        }
+
+    }
+
+
+    function  reloadRemote(){
+        const data = {type: 1, roomId: _ijt,form:"teacher"};
+        webSocket.send(JSON.stringify(data));
+        window.location.reload();
+    }
+
+    function startLive(){
+        if(acctiveStream==1){
+            offererPeer(localCameraStream);
+            acctiveStream=0;
+            openRemoteVoice();
+            $('#currentSources').html("当前直播窗口是：摄像头");
+        }else if(acctiveStream==0){
+            offererPeer(localMediaStream)
+            acctiveStream=1;
+            openRemoteVoice();
+            $('#currentSources').html("当前直播窗口是：屏幕分享");
+        }else{
+            $('#currentSources').html("没有获取到任何媒体流！");
+            getUserMedia_Camera
+            offererPeer(localCameraStream);
+            acctiveStream=0;
+            openRemoteVoice();
+            $('#currentSources').html("已经自动开启摄像头！");
+        }
+
+    }
+    async function getUserMedia_Camera() {
+        if (isSupport) {
+            //获取声音信息
+            navigator.mediaDevices.getUserMedia({
+                audio:  {
+                    echoCancellation : true,
+                    noiseSuppression : true,
+                    autoGainControl : true
+                },
+                video: true}).then(function (stream){
+                const localVideoObj = document.getElementById('vi');
+                localVideoObj.srcObject = stream;
+                localCameraStream=stream;
+                //把媒体流，发送给peer对象
+                acctiveStream=1;
+            }).catch(function (error){
+                console.log("error"+error.message);
+            });
+        }
+    }
+
+    /* offerer */
+    function offererPeer(video_stream) {//core
+        offerer = new RTCPeerConnection(CommonObj.ICEServer)
+        video_stream.getTracks().forEach(track => offerer.addTrack(track, video_stream), function (){console.log("ero");});
+        offerer.createOffer().then(function(offer) {
+            console.log("---> Creating new description object to send to remote peer");
+            return offerer.setLocalDescription(offer);
+        }).then(function() {
+            console.log("---> Sending offer to remote peer");
+            sendMessage({
+                type: "video-offer",
+                action : 'create',
+                offer:offerer.localDescription,
+                roomId:_ijt,
+                'from':'teacher',
+                'to':'student',
+                type: 100
+            });
+        }).catch(function (error){
+            console.log("error:"+error.message);
+        });
+    }
+
+    function sendMessage(data){
+        webSocket.send(JSON.stringify(data));
+    }
+    webSocket.onmessage = function (evt) {  // 收到服务器发送的消息后执行的回调
+        const dataStream = JSON.parse(evt.data);
+        if(dataStream.type==999){
+            if(dataStream.message.search("C7F6AE56ED1B4E18") == -1){
+                const divscll = document.getElementById('message');
+                divscll.scrollTop = divscll.scrollHeight;
+                setMessageInnerHTML(dataStream.message);
+            }else{
+                heartCheck.start();  //调用心跳
+            }
+        }else if(dataStream.type==6){
+            document.getElementById("remoteAnswser").innerHTML="";
+            if(acctiveStream!=10){
+                document.getElementById("remoteAnswser").innerHTML="对方已经接收，本地资源已准备就绪...3秒后连接！";
+                setTimeout(function (){
+
+                    document.getElementById("remoteAnswser").innerHTML="正在连接中...3秒后通话！";
+                    setTimeout(function (){
+                        startLive();
+                        document.getElementById("remoteAnswser").innerHTML="链接成功！";
+                    }, 3000);
+                }, 3000);
+
+            }else{
+                document.getElementById("remoteAnswser").innerHTML="本地资源未准备就绪！";
+
+            }
+
+
+
+        }
+        else {
+            if(dataStream.action!=undefined&&dataStream.roomId!=null) {
+                switch ( dataStream.action) {
+                    case 'answer' :
+                        offerer.setRemoteDescription(new RTCSessionDescription(dataStream.answer))
+                        createAnswerer(dataStream.offer)
+                        break
+                    case "candidate":
+                        offerer.addIceCandidate(new RTCIceCandidate(dataStream.candidate))
+                        break
+                }
+            }else{
+                console.log("error");
+            }
+        }
+    };
+
+    function  createAnswerer(offer){
+        offerer.createAnswer(function (answer) {
+            offerer.setLocalDescription(answer);
+            sendMessage({
+                'action': 'answer',
+                'answer': answer,
+                'roomId': _ijt,
+                'from':'student',
+                'to':'teacher',
+                type: 101
+            });
+
+        }, function (error) {
+            console.log("error:"+error.message);
+        }, CommonObj.mediaConstraints);
+
+        offerer.onicecandidate = function (event) {
+            if (!event || !event.candidate) return
+            sendMessage({
+                action : 'candidate',
+                candidate :event.candidate,
+                roomId:_ijt,
+                'from':'teacher',
+                'to':'student',
+                type: 100
+            })
+        }
+        offerer.onaddstream = function (event) {
+            const remoteAudio_div = document.getElementById("remoteAudio");
+            remoteAudio_div.srcObject = event.stream;
+            remoteAudio_div.play();
+        };
+    }
+    function hangup() {
+        console.log('Ending call');
+        offerer.close();
+        offerer = null;
+
+        const data = {type: 3, roomId: _ijt,form:"teacher"};
+        webSocket.send(JSON.stringify(data));
+    }
+</script>
+</body>
+</html>
