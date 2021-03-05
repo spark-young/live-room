@@ -117,7 +117,6 @@
     }
     // # 2、等待页面加载完成，调用方法，以识别不同的设备信息
     window.onload=function(){
-        alert("加载，调用jump")
         jump();
     }
     // -----------
@@ -247,7 +246,7 @@
         }else{
 
             if(dataStream.action!=undefined&&dataStream.roomId!=null) {
-
+                    console.log("dataStreamRoomId: "+dataStream.roomId+";_ijt:"+_ijt);
                 if (dataStream.roomId == _ijt) {
                     console.log("走到这里了")
                     switch (dataStream.action) {
