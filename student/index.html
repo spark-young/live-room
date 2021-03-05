@@ -100,7 +100,7 @@
         var userAgent = window.navigator.userAgent;
 
         //2、识别用户PC端还是手机端
-        for(let i = 0;i<devices.length++;){
+        for(let i = 0;i<devices.length;i++){
             //找到对应手机端设备的信息后跳转后手机端指定页面
             if(userAgent.indexOf(devices[i])!=-1){
                 //当前跳转为重定向跳转url会改变，如果想在Url不改变的情况下进行跳转可考虑使用iframe，js控制iframe的src。
@@ -117,6 +117,7 @@
     }
     // # 2、等待页面加载完成，调用方法，以识别不同的设备信息
     window.onload=function(){
+        alert("加载，调用jump")
         jump();
     }
     // -----------
