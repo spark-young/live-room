@@ -25,9 +25,9 @@ var CommonObj = {
             // {url: "stun:stun.voiparound.com"}, //
             {url: "stun:stun.ekiga.net"}, //
             {
-                "urls": ["turn:121.5.12.89:3478"],
-                "username": "user",
-                "credential": "123456"
+                "urls": ["turn:119.29.61.66:3478"],
+                "username": "spark",
+                "credential": "yzh13299398826"
             }
         ],
         sdpSemantics: 'plan-b'
