@@ -37,6 +37,7 @@
            playsinline=""
            preload="auto"
            x5-video-player-type="h5"
+           x5-video-orientation="landscape"
            style="width: 100%;height:99%;background-color: black;object-fit:fill" ></video>
 </div>
 
@@ -216,7 +217,7 @@
         }else{
 
             if(dataStream.action!=undefined&&dataStream.roomId!=null) {
-                alert("dataStreamRoomId: "+dataStream.roomId+";_ijt:"+_ijt);
+                // alert("dataStreamRoomId: "+dataStream.roomId+";_ijt:"+_ijt);
                 if (dataStream.roomId == _ijt) {
                     console.log("走到这里了")
                     switch (dataStream.action) {
