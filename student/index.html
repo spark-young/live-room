@@ -104,7 +104,7 @@
             //找到对应手机端设备的信息后跳转后手机端指定页面
             if(userAgent.indexOf(devices[i])!=-1){
                 //当前跳转为重定向跳转url会改变，如果想在Url不改变的情况下进行跳转可考虑使用iframe，js控制iframe的src。
-                window.location.href = baseURL+"student/phone.html";
+                window.location.href = baseURL+"student/phone.html?_ijt="+_ijt;
             }
         }
         //当循环结束后找不到对应的手机端设备信息则保持在默认的PC端页面上，即不跳转。
