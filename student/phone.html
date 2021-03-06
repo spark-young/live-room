@@ -338,13 +338,11 @@
 
         document.getElementById('peer1-to-peer2').webkitRequestFullScreen();
         $('#dlg1').dialog('close');
-         screen.orientation.lock('landscape');
-        // Screen.lockOrientation('landscape');
-
+        document.getElementById('peer1-to-peer2').addEventListener('webkitbeginfullscreen', function() {
+            plus.screen.lockOrientation('landscape'); //锁死屏幕方向为横屏
+        })
 
     }
-    // getUserMedia();
-
 
 </script>
 
