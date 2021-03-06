@@ -61,19 +61,21 @@
     &copySpark Young提供
 </div>
 <div data-options="region:'center',title:'视频'" style="padding: 3px;display: flex">
-    <div id="p" class="easyui-panel" title="本地摄像头" style="width:60%;height:100%;padding:1px;justify-content: center">
-        <video id="vi" autoplay="autoplay"
-               loop="loop"
-               muted="muted"
-               controls="controls"
-               controlsList="nodownload" style="width: 100%;height: 100%"></video>
-    </div>
-    <div id="p1" class="easyui-panel" title="屏幕共享" style="width:60%;height:100%;padding:1px;justify-content: center">
-        <video id="screen_div" autoplay="autoplay"
-               loop="loop"
-               muted="muted"
-               controls="controls"
-               controlsList="nodownload" style="width: 100%;height: 100%"></video>
+    <div style="justify-content: center">
+        <div id="p" title="本地摄像头" style="width:100%;height:50%;padding:1px;justify-content: center">
+            <video id="vi" autoplay="autoplay"
+                   loop="loop"
+                   muted="muted"
+                   controls="controls"
+                   controlsList="nodownload" style="width: 100%;height: 100%"></video>
+        </div>
+        <div id="p1" title="屏幕共享" style="width:100%;height:50%;padding:1px;justify-content: center">
+            <video id="screen_div" autoplay="autoplay"
+                   loop="loop"
+                   muted="muted"
+                   controls="controls"
+                   controlsList="nodownload" style="width: 100%;height: 100%"></video>
+        </div>
     </div>
     <div id="p2"  title="对方媒体" style="width:100%;line-height:100vh;padding:1px">
         <video id="remoteAudio" autoplay="autoplay"
