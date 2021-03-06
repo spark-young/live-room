@@ -20,8 +20,9 @@ var CommonObj = {
 
     }, ICEServer: {
         iceServers: [
-            {url: "stun:stun.l.google.com:19302"}, // 谷歌的公共服务
+            // {url: "stun:stun.l.google.com:19302"}, // 谷歌的公共服务
             // {url: "stun:stun.ideasip.com"}, //
+            {url: "stun:stun.voiparound.com"}, //
             {
                 "urls": ["turn:121.5.12.89:3478"],
                 "username": "user",
